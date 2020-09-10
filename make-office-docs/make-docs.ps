@@ -1,0 +1,44 @@
+param (
+   [string]$in = "The List.xlsx"
+)
+
+Install-Module -Name ImportExcel
+Install-Module -Name PSWriteWord
+
+
+Write-output $in
+
+$input = Import-Excel -Path ./input.xlsx
+
+Foreach ($file_to_make in $input){
+    ### Create the folder for the file if it is not current
+    $container = Split-Path -Path $file_to_make.filename
+    if ($container -ne ''){
+        $null = New-Item -Path $container -ItemType Directory
+    }
+    switch($file_to_make.type){
+        "doc" {
+            ### define new document
+            $WordDocument = New-WordDocument $file_to_make.filename
+            ### add 3 paragraphs
+            Add-WordText -WordDocument $WordDocument -Text $file_to_make.heading -HeadingType Heading1 -Supress $true
+
+            Add-WordCustomProperty -WordDocument $WordDocument -Name 'Title'  -Value $file_to_make.heading -Supress $true
+            Add-WordCustomProperty -WordDocument $WordDocument -Name 'Status'  -Value $file_to_make.status -Supress $true
+            Add-WordCustomProperty -WordDocument $WordDocument -Name 'Version'  -Value $file_to_make.version -Supress $true
+
+            ### Save document
+            Save-WordDocument $WordDocument -Language 'en-US' -Supress $True #-OpenDocument
+            Write-output "Created MS Word document at $($file_to_make.filename)"
+        }
+        "xls" {
+            #Put some simple data in a worksheet and Get an excel package object to represent the file
+            $excel = Export-Excel $file_to_make.filename -PassThru -WorksheetName $file_to_make.heading -Title $file_to_make.heading
+            #Save and open in Excel
+            Close-ExcelPackage -ExcelPackage $excel
+            Write-output "Created MS Excel document at $($file_to_make.filename)"
+        }
+        "ppt" { Write-output "MS PowerPoint not yet supported" }
+
+    }
+}
