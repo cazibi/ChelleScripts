@@ -2,24 +2,24 @@ param (
    [string]$in = "The List.xlsx"
 )
 
-Install-Module -Name ImportExcel
-Install-Module -Name PSWriteWord
+#Install-Module -Name ImportExcel
+#Install-Module -Name PSWriteWord
 
-
-Write-output $in
-
-$input = Import-Excel -Path ./input.xlsx
+$input = Import-Excel -Path $in
 
 Foreach ($file_to_make in $input){
+
     ### Create the folder for the file if it is not current
-    $container = Split-Path -Path $file_to_make.filename
-    if ($container -ne ''){
+    $container = $file_to_make.folder
+    if (-Not (Test-Path $container)){
         $null = New-Item -Path $container -ItemType Directory
     }
+    $FilePath = Join-Path -Path $container -ChildPath $file_to_make.filename
     switch($file_to_make.type){
         "doc" {
             ### define new document
-            $WordDocument = New-WordDocument $file_to_make.filename
+            
+            $WordDocument = New-WordDocument $FilePath
             ### add 3 paragraphs
             Add-WordText -WordDocument $WordDocument -Text $file_to_make.heading -HeadingType Heading1 -Supress $true
 
@@ -28,15 +28,15 @@ Foreach ($file_to_make in $input){
             Add-WordCustomProperty -WordDocument $WordDocument -Name 'Version'  -Value $file_to_make.version -Supress $true
 
             ### Save document
-            Save-WordDocument $WordDocument -Language 'en-US' -Supress $True #-OpenDocument
-            Write-output "Created MS Word document at $($file_to_make.filename)"
+            Save-WordDocument $WordDocument -Language 'en-US' -Supress $true #-OpenDocument
+            Write-output "Created MS Word document at $($FilePath)"
         }
         "xls" {
             #Put some simple data in a worksheet and Get an excel package object to represent the file
-            $excel = Export-Excel $file_to_make.filename -PassThru -WorksheetName $file_to_make.heading -Title $file_to_make.heading
+            $excel = Export-Excel $FilePath -PassThru -WorksheetName $file_to_make.heading -Title $file_to_make.heading
             #Save and open in Excel
             Close-ExcelPackage -ExcelPackage $excel
-            Write-output "Created MS Excel document at $($file_to_make.filename)"
+            Write-output "Created MS Excel document at $($FilePath)"
         }
         "ppt" { Write-output "MS PowerPoint not yet supported" }
 
